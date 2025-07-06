@@ -7,29 +7,55 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCESS} from "lib/account-abstraction/contracts/core/Helpers.sol";
-import {IEntrypoint} from "lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {IEntryPoint} from "lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
+
 
 contract MinimalAccount is IAccount, Ownable {
-    IEntrypoint public immutable i_entryPoint;
+    IEntryPoint private immutable i_entryPoint;
+
+    //////////////////////////////// errors ////////////////////////////////
 
     error MinimalAccount__OnlyEntryPoint();
+    error MinimalAccount__OnlyEntryPointOrOwner();
+    error MinimalAccount__CallFailed(bytes result);
 
-    constructor(address entryPoint) Ownable(msg.sender) {
-        i_entryPoint = IEntryPoint(entryPoint);
-    }
 
-    modifier onlyEntryPoint() {
+    //////////////////////////////// modifiers ////////////////////////////////
+     modifier requireFromEntryPoint()  {
         if (msg.sender != address(i_entryPoint)) {
             revert MinimalAccount__OnlyEntryPoint();
         }
         _;
     }
 
+    modifier requireFromEntryPointOrOwner() {
+        if (msg.sender != address(i_entryPoint) && msg.sender != owner()) {
+            revert MinimalAccount__OnlyEntryPointOrOwner();
+        }
+        _;
+    }
+
+    constructor(address entryPoint) Ownable(msg.sender) {
+        i_entryPoint = IEntryPoint(entryPoint);
+    }
+
+   function execute(
+        address target,
+        uint256 value,
+        bytes calldata functiondata
+    ) external requireFromEntryPointOrOwner  {
+        (bool success, bytes memory returnData) = payable(target).call{value: value}(functiondata);
+        if (!success) {
+         revert MinimalAccount__CallFailed(returnData);
+        }
+       
+    }
+
     function validateUserOp(
         PackedUserOperation calldata userOp,
         bytes32 userOpHash,
         uint256 missingAccountFunds
-    ) external onlyEntryPoint returns (uint256 validationData) {
+    ) external requireFromEntryPoint returns (uint256 validationData) {
         validationData = _validateSignature(userOp, userOpHash);
         _paypreFund(missingAccountFunds);
     }
@@ -54,5 +80,11 @@ contract MinimalAccount is IAccount, Ownable {
             return SIG_VALIDATION_FAILED;
         }
         return SIG_VALIDATION_SUCCESS;
+    }
+  
+
+     ///////////////////////////////// Getters /////////////////////////////////
+    function getEntryPoint() external view returns (address) {
+        return address(i_entryPoint);
     }
 }
