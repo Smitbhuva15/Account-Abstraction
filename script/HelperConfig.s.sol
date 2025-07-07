@@ -10,12 +10,12 @@ contract HelperConfig{
     uint256 constant ETH_SEPOLIA_CHAIN_ID = 11155111;
     uint256 constant ZKSYNC_SEPOLIA_CHAIN_ID = 300;
     uint256 constant LOCAL_CHAIN_ID = 31337;
-    // Update the BURNER_WALLET to your burner wallet!
-    address constant BURNER_WALLET = 0x643315C9Be056cDEA171F4e7b2222a4ddaB9F88D;
+  
+    address constant BURNER_WALLET = 0x68D36c207B846422cb924C54FcE2085eb8eD5A78;
     uint256 constant ARBITRUM_MAINNET_CHAIN_ID = 42_161;
     uint256 constant ZKSYNC_MAINNET_CHAIN_ID = 324;
     // address constant FOUNDRY_DEFAULT_WALLET = 0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38;
-    address constant ANVIL_DEFAULT_ACCOUNT = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
+    // address constant ANVIL_DEFAULT_ACCOUNT = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
 
     struct NetworkConfig {
