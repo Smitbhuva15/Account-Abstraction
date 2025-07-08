@@ -44,7 +44,7 @@ contract MinimalAccount is IAccount, Ownable {
         uint256 value,
         bytes calldata functiondata
     ) external requireFromEntryPointOrOwner  {
-        (bool success, bytes memory returnData) = payable(target).call{value: value}(functiondata);
+        (bool success, bytes memory returnData) = target.call{value: value}(functiondata);
         if (!success) {
          revert MinimalAccount__CallFailed(returnData);
         }
