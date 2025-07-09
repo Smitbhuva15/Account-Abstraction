@@ -6,13 +6,43 @@ import {PackedUserOperation} from "lib/account-abstraction/contracts/interfaces/
 import {HelperConfig} from "script/HelperConfig.s.sol";
 import {IEntryPoint} from "lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-
+import {MinimalAccount} from "../src/ethereum/ MinimalAccount.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract SendPackedUserOp is Script {
 
     using MessageHashUtils for bytes32;
 
-    function run() public {}
+
+        address constant RANDOM_APPROVER = 0x9EA9b0cc1919def1A3CfAEF4F7A66eE3c36F86fC;
+        address minimalAccountAddress = address(0x03Ad95a54f02A40180D45D76789C448024145aaF);   //deploy MinimalAccount contract then ->get this address 
+
+    function run() public {
+         HelperConfig helperConfig = new HelperConfig();
+        address dest = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831; // arbitrum mainnet USDC address
+        uint256 value = 0;
+    
+
+       (address entryPoint, address account) = helperConfig
+            .localNetworkConfig();
+        HelperConfig.NetworkConfig memory localnetwork = HelperConfig.NetworkConfig({
+            entryPoint: entryPoint,
+            account: account
+        });
+
+        bytes memory functionData = abi.encodeWithSelector(IERC20.approve.selector, RANDOM_APPROVER, 1e18);
+        bytes memory executeCalldata =
+            abi.encodeWithSelector(MinimalAccount.execute.selector, dest, value, functionData);
+        PackedUserOperation memory userOp =
+            _generatesignedUserOperation(executeCalldata, localnetwork, minimalAccountAddress);
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        ops[0] = userOp;
+
+        // Send transaction
+        vm.startBroadcast();
+        IEntryPoint( localnetwork.entryPoint).handleOps(ops, payable( localnetwork.account));
+        vm.stopBroadcast();
+    }
 
     function _generatesignedUserOperation(
         bytes memory callData,
