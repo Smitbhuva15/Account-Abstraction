@@ -9,15 +9,26 @@ import {NONCE_HOLDER_SYSTEM_CONTRACT, BOOTLOADER_FORMAL_ADDRESS, DEPLOYER_SYSTEM
 import {INonceHolder} from "lib/foundry-era-contracts/src/system-contracts/contracts/interfaces/INonceHolder.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Utils} from "lib/foundry-era-contracts/src/system-contracts/contracts/libraries/Utils.sol";
 
 contract ZkMinimalAccount is IAccount, Ownable {
     using MemoryTransactionHelper for Transaction;
 
+  /////////////////////////////       errors          ///////////////////////////////
     error ZkMinimalAccount__NotEnoughBalance();
     error ZkMinimalAccount__NotFromBootLoader();
+    error ZkMinimalAccount__ExecutionFailed();
 
+  /////////////////////////////       modifier          ///////////////////////////////
     modifier requireFromBootLoader() {
         if (msg.sender != BOOTLOADER_FORMAL_ADDRESS) {
+            revert ZkMinimalAccount__NotFromBootLoader();
+        }
+        _;
+    }
+
+    modifier requireFromBootLoaderorOwner() {
+        if (msg.sender != BOOTLOADER_FORMAL_ADDRESS && msg.sender != owner()) {
             revert ZkMinimalAccount__NotFromBootLoader();
         }
         _;
@@ -32,8 +43,8 @@ contract ZkMinimalAccount is IAccount, Ownable {
     // 3. validate Signature
 
     function validateTransaction(
-        bytes32 _txHash,
-        bytes32 _suggestedSignedHash,
+        bytes32 /*_txHash*/,
+        bytes32 /*_suggestedSignedHash*/,
         Transaction calldata _transaction
     ) external payable requireFromBootLoader returns (bytes4 magic) {
         // system call simulation
@@ -70,11 +81,39 @@ contract ZkMinimalAccount is IAccount, Ownable {
     }
 
     function executeTransaction(
-        bytes32 _txHash,
-        bytes32 _suggestedSignedHash,
+        bytes32 /*_txHash*/,
+        bytes32 /*_suggestedSignedHash*/,
         Transaction calldata _transaction
-    ) external payable {
-        
+    ) external payable requireFromBootLoaderorOwner {
+        address to = address(uint160(_transaction.to));
+        uint128 value = Utils.safeCastToU128(_transaction.value);
+        bytes memory data = _transaction.data;
+
+        if (to == address(DEPLOYER_SYSTEM_CONTRACT)) {
+            uint32 gas = Utils.safeCastToU32(gasleft());
+            SystemContractsCaller.systemCallWithPropagatedRevert(
+                gas,
+                to,
+                value,
+                data
+            );
+        } else {
+            bool success;
+            assembly {
+                success := call(
+                    gas(),
+                    to,
+                    value,
+                    add(data, 0x20),
+                    mload(data),
+                    0,
+                    0
+                )
+            }
+            if (!success) {
+                revert ZkMinimalAccount__ExecutionFailed();
+            }
+        }
     }
 
     // There is no point in providing possible signed hash in the `executeTransactionFromOutside` method,
