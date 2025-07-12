@@ -14,7 +14,7 @@ contract ZkMinimalAccountTest is Test {
     ZkMinimalAccount minimalAccount;
     ERC20Mock usdc;
 
-    
+
     uint256 constant AMOUNT = 1e18;
     bytes32 constant EMPTY_BYTES32 = bytes32(0);
     address constant ANVIL_DEFAULT_ACCOUNT =
@@ -54,7 +54,7 @@ contract ZkMinimalAccountTest is Test {
         assertEq(usdc.balanceOf(address(minimalAccount)), AMOUNT);
     }
 
-    function testZkValidateTransaction() public onlyZkSync {
+    function testZkValidateTransaction() public {
         // Arrange
         address dest = address(usdc);
         uint256 value = 0;
@@ -74,14 +74,14 @@ contract ZkMinimalAccountTest is Test {
         transaction = _signTransaction(transaction);
 
         //Act
-        vm.stratPrank(BOOTLOADER_FORMAL_ADDRESS);
+        vm.startPrank(BOOTLOADER_FORMAL_ADDRESS);
         // only call --> BOOTLOADER_FORMAL_ADDRESS
         bytes4 magic = minimalAccount.validateTransaction(
             EMPTY_BYTES32,
             EMPTY_BYTES32,
             transaction
         );
-        VM.stopPrank();
+        vm.stopPrank();
 
         //Assert
         assertEq(magic, ACCOUNT_VALIDATION_SUCCESS_MAGIC);
