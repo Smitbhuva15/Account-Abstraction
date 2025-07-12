@@ -13,12 +13,18 @@ import {ACCOUNT_VALIDATION_SUCCESS_MAGIC} from "lib/foundry-era-contracts/src/sy
 contract ZkMinimalAccountTest is Test {
     ZkMinimalAccount minimalAccount;
     ERC20Mock usdc;
+
+    
     uint256 constant AMOUNT = 1e18;
-    bytes32 EMPTY_BYTES32 = bytes32(0);
+    bytes32 constant EMPTY_BYTES32 = bytes32(0);
+    address constant ANVIL_DEFAULT_ACCOUNT =
+        0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
 
     function setup() public {
         minimalAccount = new ZkMinimalAccount();
+        minimalAccount.transferOwnership(ANVIL_DEFAULT_ACCOUNT);
         usdc = new ERC20Mock();
+        vm.deal(address(minimalAccount), AMOUNT);
     }
 
     function testZkOwnerCanExecuteCommands() public {
